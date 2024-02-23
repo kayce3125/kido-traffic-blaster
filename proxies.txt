@@ -1,1 +1,2 @@
-#Put your proxies like proxy:port style and remove this hint.
+180.183.157.159:8080
+46.4.96.137:1080
