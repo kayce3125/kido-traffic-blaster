@@ -1,87 +1,111 @@
-from selenium import webdriver
+import random
 import time
-proxylist="0.0.0.0"
-portlist=8080
-proxyline=1
-def Readproxies():
-        global proxylist
-        global portlist
-        global proxyline
-        #If you want u can change "proxies.txt" for different location of your proxy list.
-        txt=open("proxies.txt", "r")
-        proxies=txt.readlines()[proxyline]
-        for i in range(0,len(proxies)+1):
-            a=proxies[i]
-            if a==":":
-                proxylist=proxies[0:i]
-                portlist=proxies[i+1:len(proxies)]
-                proxyline+=1
-                break
+from selenium import webdriver
 
-def Proxyprofile_Chrome():
-    global browser
-    full_proxy=proxylist+":"+portlist
+# Global Variables
+proxylist = []
+useragents = []
+browsers = ['firefox', 'chrome', 'opera', 'chromium']
 
-    chrome_options = webdriver.ChromeOptions()
-    chrome_options.add_argument('--proxy-server=%s' % full_proxy)
-    browser = webdriver.Chrome(executable_path=r"chromedriver.exe", options=chrome_options)
-    print(proxylist)
-    print(portlist)
+# Read proxies from proxies.txt
+def read_proxies():
+    global proxylist
+    with open("proxies.txt", "r") as file:
+        proxylist = file.readlines()
 
+# Read user-agents from useragent.txt
+def read_useragents():
+    global useragents
+    with open("useragent.txt", "r") as file:
+        useragents = file.readlines()
 
+# Get a random proxy
+def get_random_proxy():
+    return random.choice(proxylist).strip()
 
-def Startprocess_Chrome():
-        try:
-            #Change this for your website.
-            browser.get("https://google.com/")
-            time.sleep(60)
-            browser.quit()
-        except:
-            print("One error is happened.Please reboot this session.")
-            browser.quit()
-            
-        
+# Get a random user-agent
+def get_random_useragent():
+    return random.choice(useragents).strip()
 
-def Proxyprofile():
-        global profile
-        profile=webdriver.FirefoxProfile()
-        profile.set_preference("privacy.trackingprotection.enabled ", 0)
-        profile.set_preference("dom.push.connection.enabled",0)
+# Get a random browser
+def get_random_browser():
+    return random.choice(browsers)
+
+# Configure webdriver with proxy, user-agent, and browser
+def configure_webdriver(proxy, user_agent, browser):
+    options = None
+    if browser == 'chrome':
+        options = webdriver.ChromeOptions()
+        options.add_argument(f'user-agent={user_agent}')
+        options.add_argument(f'--proxy-server={proxy}')
+        return webdriver.Chrome(executable_path="chromedriver.exe", options=options)
+    elif browser == 'firefox':
+        profile = webdriver.FirefoxProfile()
+        profile.set_preference("general.useragent.override", user_agent)
         profile.set_preference("network.proxy.type", 1)
-        profile.set_preference("network.proxy.http",str(proxylist))
-        profile.set_preference("network.proxy.http_port",int(portlist))
-        profile.set_preference("network.proxy.ssl",str(proxylist))
-        profile.set_preference("network.proxy.ssl_port", int(portlist))
-        profile.set_preference("dom.disable_open_during_load", False)
-        print(proxylist)
-        print(portlist)
+        profile.set_preference("network.proxy.http", proxy.split(":")[0])
+        profile.set_preference("network.proxy.http_port", int(proxy.split(":")[1]))
+        return webdriver.Firefox(executable_path="geckodriver.exe", firefox_profile=profile)
+    elif browser == 'opera':
+        options = webdriver.ChromeOptions()
+        options.add_argument(f'user-agent={user_agent}')
+        options.add_argument(f'--proxy-server={proxy}')
+        return webdriver.Chrome(executable_path="operadriver.exe", options=options)
+    elif browser == 'chromium':
+        options = webdriver.ChromeOptions()
+        options.add_argument(f'user-agent={user_agent}')
+        options.add_argument(f'--proxy-server={proxy}')
+        return webdriver.Chrome(executable_path="chromiumdriver.exe", options=options)
+    else:
+        raise ValueError("Invalid browser choice")
 
+# Visit the provided URL, click on 1 or 2 random links, and scroll up and down
+def visit_website(url, driver):
+    try:
+        driver.get(url)
+        time.sleep(random.randint(60, 80))
 
-def Startprocess():
-        global driver,profile
-        driver=webdriver.Firefox(executable_path=r"geckodriver.exe",firefox_profile=profile)
-        #driver.set_page_load_timeout(40)
+        # Click on 1 or 2 random links
+        links = driver.find_elements_by_tag_name('a')
+        random_links = random.sample(links, min(2, len(links)))
+        for link in random_links:
+            link.click()
+            time.sleep(random.randint(1, 3))
+
+        # Scroll up and down
+        for _ in range(random.randint(2, 5)):
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(random.randint(1, 3))
+            driver.execute_script("window.scrollTo(0, 0);")
+            time.sleep(random.randint(1, 3))
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+    finally:
+        driver.quit()
+
+if __name__ == "__main__":
+    read_proxies()
+    read_useragents()
+    
+    while True:
         try:
-            #Change this for your website.
-            driver.get("https://google.com/")
-            time.sleep(60)
-            driver.quit()
-        except:
-            print("One error is happened.Please reboot this session.")
-            driver.quit()
-            
+            url = input("Enter the URL of the website: ")
+            proxy = get_random_proxy()
+            user_agent = get_random_useragent()
+            browser = get_random_browser()
 
+            print(f"Using proxy: {proxy}")
+            print(f"Using user-agent: {user_agent}")
+            print(f"Using browser: {browser}")
 
+            driver = configure_webdriver(proxy, user_agent, browser)
+            visit_website(url, driver)
 
+            print("Task completed. Waiting for next iteration...")
+            time.sleep(random.randint(60, 80))
 
-while True:
-        Readproxies()
-        Proxyprofile()
-        Startprocess()
-
-
-
-"""while True:
-        Readproxies()
-        Proxyprofile_Chrome()
-        Startprocess_Chrome()"""
+        except KeyboardInterrupt:
+            print("\nProgram terminated by user.")
+            break
